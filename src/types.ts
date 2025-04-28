@@ -25,7 +25,7 @@ export interface Task {
   priority: Priority;
   userId: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   dueDate?: string;
   completedAt?: string;
 }

@@ -54,15 +54,15 @@ function TaskItem({
     if (task.status === Status.COMPLETED) {
       return "text-gray-500 line-through";
     }
-    if (task.status === Status.IN_PROGRESS) {
-      return "text-blue-600";
-    }
+
     return "";
   };
 
   return (
     <div
-      className={`flex p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : ""}`}
+      className={`flex p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
+        isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+      }`}
       onClick={onClick}
     >
       <input
@@ -83,9 +83,6 @@ function TaskItem({
           <p className="text-xs text-gray-500">
             Due: {formatDate(task.dueDate)}
           </p>
-          <span className="text-xs">
-            {task.status === Status.IN_PROGRESS ? "In Progress" : task.status}
-          </span>
         </div>
       </div>
     </div>

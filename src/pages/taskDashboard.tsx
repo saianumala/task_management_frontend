@@ -17,14 +17,36 @@ function TaskDashboard() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [isMobileView, setIsMobileView] = useState<boolean>(false);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkMobileView = () => {
+      setIsMobileView(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setShowSidebar(true);
+        if (selectedTask || showTaskForm) {
+          setShowSidebar(false);
+        }
+      } else {
+        setShowSidebar(true);
+      }
+    };
+
+    checkMobileView();
+    window.addEventListener("resize", checkMobileView);
+    return () => window.removeEventListener("resize", checkMobileView);
+  }, [selectedTask, showTaskForm]);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate("/login");
       return;
     }
   }, []);
+
   useEffect(() => {
     setIsLoading(true);
     const fetchTasks = async () => {
@@ -57,7 +79,6 @@ function TaskDashboard() {
     setIsLoading(true);
 
     try {
-      // In a real app, you would send a POST request to your API
       const response = await fetch(
         `${import.meta.env.VITE_BACKENDURL}/api/task/create`,
         {
@@ -72,12 +93,6 @@ function TaskDashboard() {
       if (!response.ok)
         throw new Error(data.message || "Failed to create task");
 
-      // Simulating API response
-      const userString = localStorage.getItem("user");
-      const user: User = userString
-        ? JSON.parse(userString)
-        : { userId: "123" };
-
       const newTask: Task = {
         ...taskData,
         id: Math.random().toString(36).substring(2, 9),
@@ -85,7 +100,6 @@ function TaskDashboard() {
         priority: taskData.priority || "low",
         userId: user.userId,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
 
       setTasks((prevTasks) =>
@@ -93,6 +107,9 @@ function TaskDashboard() {
       );
       setSelectedTask(newTask);
       setShowTaskForm(false);
+      if (isMobileView) {
+        setShowSidebar(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create task");
     } finally {
@@ -127,6 +144,9 @@ function TaskDashboard() {
       );
       setEditTask(null);
       setSelectedTask(updatedTask);
+      if (isMobileView) {
+        setShowSidebar(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update task");
     } finally {
@@ -156,6 +176,9 @@ function TaskDashboard() {
       setTasks(tasks && tasks.filter((task) => task.id !== id));
       if (selectedTask && selectedTask.id === id) {
         setSelectedTask(null);
+        if (isMobileView) {
+          setShowSidebar(true);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete task");
@@ -216,13 +239,20 @@ function TaskDashboard() {
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
+    if (isMobileView) {
+      setShowSidebar(false);
+    }
   };
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
     setShowTaskForm(true);
     setSelectedTask(null);
+    if (isMobileView) {
+      setShowSidebar(false);
+    }
   };
+
   const handleLogout = async () => {
     const logoutResponse = await fetch(
       `${import.meta.env.VITE_BACKENDURL}/api/user/logout`,
@@ -235,6 +265,13 @@ function TaskDashboard() {
       const data = await logoutResponse.json();
       throw new Error(data.message || "Failed to logout");
     }
+    navigate("/login");
+  };
+
+  const handleBackToList = () => {
+    setSelectedTask(null);
+    setShowTaskForm(false);
+    setShowSidebar(true);
   };
 
   const filteredTasks =
@@ -250,22 +287,26 @@ function TaskDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {isLoading ? (
+      {isLoading && !showTaskForm && !selectedTask ? (
         <div className="flex items-center justify-center h-screen">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div>
+        <div className="flex flex-col h-screen">
           <header className="bg-white shadow">
-            <div className="flex items-center justify-between px-6 py-4 mx-auto">
-              <div className="text-2xl font-bold text-blue-600">TaskMaster</div>
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
+            <div className="flex flex-wrap items-center justify-between px-4 py-3 mx-auto sm:px-6">
+              <div className="flex items-center">
+                <div className="text-xl font-bold text-blue-600 sm:text-2xl">
+                  TaskMaster
+                </div>
+              </div>
+              <div className="flex items-center mt-2 space-x-2 sm:mt-0 sm:space-x-4">
+                <span className="text-sm text-gray-700 truncate sm:text-base">
                   Hello, {user.fullName || user.email}
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded"
+                  className="px-2 py-1 text-xs text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded sm:px-3 sm:text-sm"
                 >
                   Logout
                 </button>
@@ -273,125 +314,164 @@ function TaskDashboard() {
             </div>
           </header>
 
-          <div className="flex flex-1 h-[calc(100vh-4rem)]">
-            <div className="flex flex-col w-80 bg-white border-r border-gray-200">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  My Tasks
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowTaskForm(true);
-                    setEditTask(null);
-                    setSelectedTask(null);
-                  }}
-                  className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
-                >
-                  Add Task
-                </button>
-              </div>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Task List Sidebar */}
+            {(showSidebar || !isMobileView) && (
+              <div
+                className={`flex flex-col bg-white border-r border-gray-200 ${
+                  isMobileView ? "w-full" : "w-80"
+                }`}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-800 sm:text-xl">
+                    My Tasks
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowTaskForm(true);
+                      setEditTask(null);
+                      setSelectedTask(null);
+                      if (isMobileView) {
+                        setShowSidebar(false);
+                      }
+                    }}
+                    className="px-2 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600 sm:px-3 sm:text-sm"
+                  >
+                    Add Task
+                  </button>
+                </div>
 
-              <div className="flex p-2 border-b border-gray-200">
-                <button
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded ${
-                    filter === "all"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                  onClick={() => setFilter("all")}
-                >
-                  All
-                </button>
-                <button
-                  className={`flex-1 px-3 py-2 mx-2 text-sm font-medium rounded ${
-                    filter === "active"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                  onClick={() => setFilter("active")}
-                >
-                  Active
-                </button>
-                <button
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded ${
-                    filter === "completed"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                  onClick={() => setFilter("completed")}
-                >
-                  Completed
-                </button>
-              </div>
+                <div className="flex p-2 border-b border-gray-200">
+                  <button
+                    className={`flex-1 px-2 py-2 text-xs font-medium rounded sm:px-3 sm:text-sm ${
+                      filter === "all"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                    onClick={() => setFilter("all")}
+                  >
+                    All
+                  </button>
+                  <button
+                    className={`flex-1 px-2 py-2 mx-1 text-xs font-medium rounded sm:px-3 sm:mx-2 sm:text-sm ${
+                      filter === "active"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                    onClick={() => setFilter("active")}
+                  >
+                    Active
+                  </button>
+                  <button
+                    className={`flex-1 px-2 py-2 text-xs font-medium rounded sm:px-3 sm:text-sm ${
+                      filter === "completed"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                    onClick={() => setFilter("completed")}
+                  >
+                    Completed
+                  </button>
+                </div>
 
-              <div className="flex-1 overflow-y-auto">
-                {isLoading ? (
+                <div className="flex-1 overflow-y-auto">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : error ? (
+                    <div className="p-3 m-2 text-sm text-red-700 bg-red-100 rounded sm:p-4">
+                      <p>{error}</p>
+                      <button
+                        onClick={() => setError("")}
+                        className="px-2 py-1 mt-2 text-xs text-white bg-red-500 rounded hover:bg-red-600"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  ) : filteredTasks && filteredTasks.length > 0 ? (
+                    filteredTasks.map((task) => (
+                      <TaskItem
+                        key={task.id}
+                        task={task}
+                        onClick={() => handleTaskClick(task)}
+                        onToggleComplete={() => toggleTaskStatus(task.id)}
+                        isSelected={
+                          selectedTask ? selectedTask.id === task.id : false
+                        }
+                      />
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                      <p>No tasks found</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Task Detail/Form Area */}
+            {(!showSidebar || !isMobileView) && (
+              <div className="flex-1 p-4 overflow-y-auto bg-gray-50 sm:p-6">
+                {isMobileView && (
+                  <button
+                    onClick={handleBackToList}
+                    className="flex items-center mb-4 text-sm text-blue-500 hover:text-blue-700"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4 mr-1"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Back to task list
+                  </button>
+                )}
+
+                {isLoading && showTaskForm ? (
                   <div className="flex items-center justify-center h-32">
                     <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                ) : error ? (
-                  <div className="p-4 m-2 text-red-700 bg-red-100 rounded">
-                    <p>{error}</p>
-                    <button
-                      onClick={() => setError("")}
-                      className="px-2 py-1 mt-2 text-xs text-white bg-red-500 rounded hover:bg-red-600"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                ) : filteredTasks && filteredTasks.length > 0 ? (
-                  filteredTasks.map((task) => (
-                    <TaskItem
-                      key={task.id}
-                      task={task}
-                      onClick={() => handleTaskClick(task)}
-                      onToggleComplete={() => toggleTaskStatus(task.id)}
-                      isSelected={
-                        selectedTask ? selectedTask.id === task.id : false
+                ) : selectedTask ? (
+                  <TaskDetail
+                    task={selectedTask}
+                    onEdit={() => handleEditClick(selectedTask)}
+                    onDelete={() => deleteTask(selectedTask.id)}
+                    onToggleStatus={() => toggleTaskStatus(selectedTask.id)}
+                  />
+                ) : showTaskForm ? (
+                  <TaskForm
+                    onSubmit={editTask ? updateTask : addTask}
+                    onCancel={() => {
+                      setShowTaskForm(false);
+                      setEditTask(null);
+                      if (isMobileView) {
+                        setShowSidebar(true);
                       }
-                    />
-                  ))
+                    }}
+                    task={editTask}
+                  />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <p>No tasks found</p>
-                  </div>
+                  !isMobileView && (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-600">
+                      <h3 className="text-lg font-semibold text-center sm:text-xl">
+                        Select a task or create a new one
+                      </h3>
+                      <p className="mt-2 text-sm text-center text-gray-500 sm:text-base">
+                        Click on a task to view details or use the Add Task
+                        button to create a new task
+                      </p>
+                    </div>
+                  )
                 )}
               </div>
-            </div>
-
-            <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
-              {isLoading && showTaskForm ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : selectedTask ? (
-                <TaskDetail
-                  task={selectedTask}
-                  onEdit={() => handleEditClick(selectedTask)}
-                  onDelete={() => deleteTask(selectedTask.id)}
-                  onToggleStatus={() => toggleTaskStatus(selectedTask.id)}
-                />
-              ) : showTaskForm ? (
-                <TaskForm
-                  onSubmit={editTask ? updateTask : addTask}
-                  onCancel={() => {
-                    setShowTaskForm(false);
-                    setEditTask(null);
-                  }}
-                  task={editTask}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-600">
-                  <h3 className="text-xl font-semibold">
-                    Select a task or create a new one
-                  </h3>
-                  <p className="mt-2 text-gray-500">
-                    Click on a task to view details or use the Add Task button
-                    to create a new task
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -60,7 +60,6 @@ function Register() {
         setIsLoading(false);
         return;
       }
-      // Simulating API response
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
