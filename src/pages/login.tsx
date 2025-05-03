@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../customHooks/useAuth";
 
 function Login() {
+  // State variables
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -10,9 +11,11 @@ function Login() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    // Simple form validation
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
@@ -21,6 +24,7 @@ function Login() {
     setIsLoading(true);
 
     try {
+      // Send login request to backend
       const response = await fetch(
         `${import.meta.env.VITE_BACKENDURL}/api/user/login`,
         {
@@ -49,6 +53,8 @@ function Login() {
       setError(err instanceof Error ? err.message : "Login failed");
     }
   };
+
+  // Redirect if already authenticated
   useEffect(() => {
     if (!loading && isAuthenticated) {
       navigate("/");
@@ -58,6 +64,7 @@ function Login() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        {/* Header */}
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
           <p className="mt-2 text-gray-600">
@@ -65,12 +72,14 @@ function Login() {
           </p>
         </div>
 
+        {/* Error message display */}
         {error && (
           <div className="p-4 text-red-700 bg-red-100 border-l-4 border-red-500 rounded">
             {error}
           </div>
         )}
 
+        {/* Login form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
@@ -108,6 +117,7 @@ function Login() {
             />
           </div>
 
+          {/* Submit button with loading state */}
           <button
             type="submit"
             disabled={isLoading}
@@ -117,6 +127,7 @@ function Login() {
           </button>
         </form>
 
+        {/* Registration link */}
         <div className="text-center text-sm text-gray-600">
           <p>
             Don't have an account?{" "}

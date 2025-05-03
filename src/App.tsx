@@ -1,17 +1,20 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-
 import Login from "./pages/login";
 import Register from "./pages/register";
-import TaskDashboard from "./pages/taskDashboard";
-import { RecoilRoot } from "recoil";
+// import TaskDashboard from "./pages/taskDashboard";
+// import { RecoilRoot } from "recoil";
 import { ProtectedRoute } from "./components/protectedRoute";
+import { Provider } from "react-redux";
+// import root from "./store/store";
+import TaskManagement from "./components/taskManagement";
+import store from "./store/store";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: (
       <ProtectedRoute>
-        <TaskDashboard />
+        <TaskManagement />
       </ProtectedRoute>
     ),
   },
@@ -26,9 +29,9 @@ export const router = createBrowserRouter([
 ]);
 function App() {
   return (
-    <RecoilRoot>
+    <Provider store={store}>
       <RouterProvider router={router} />
-    </RecoilRoot>
+    </Provider>
   );
 }
 

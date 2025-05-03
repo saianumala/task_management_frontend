@@ -26,6 +26,6 @@ export interface Task {
   userId: string;
   createdAt: string;
   updatedAt?: string;
-  dueDate?: string;
+  dueDate: string;
   completedAt?: string;
 }

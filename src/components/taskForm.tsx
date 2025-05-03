@@ -1,62 +1,61 @@
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { Task, Priority, Status } from "../types";
 
 interface TaskFormProps {
   onSubmit: (task: any) => void;
-  onCancel: () => void;
+  dialogRef: React.RefObject<HTMLDialogElement | null>;
   task?: Task | null;
 }
 
-function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
-  const [title, setTitle] = useState<string>(task?.title || "");
-  const [description, setDescription] = useState<string>(
-    task?.description || ""
-  );
-  const [priority, setPriority] = useState<string>(
-    task?.priority || Priority.MEDIUM
-  );
-  const [dueDate, setDueDate] = useState<string>(
-    task?.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
-  );
-  const [status, setStatus] = useState<Status>(
-    task?.status || Status.INCOMPLETE
-  );
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+type FormValues = {
+  title: string;
+  description: string;
+  priority: Priority;
+  dueDate: string;
+  status?: Status;
+};
 
-  const validate = () => {
-    const newErrors: { [key: string]: string } = {};
+function TaskForm({ onSubmit, dialogRef, task }: TaskFormProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      title: task?.title || "",
+      description: task?.description || "",
+      priority: task?.priority || Priority.MEDIUM,
+      dueDate: task?.dueDate
+        ? new Date(task.dueDate).toISOString().split("T")[0]
+        : "",
+      status: task?.status || Status.INCOMPLETE,
+    },
+  });
 
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
+  useEffect(() => {
+    if (task) {
+      reset({
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        dueDate: task.dueDate
+          ? new Date(task.dueDate).toISOString().split("T")[0]
+          : "",
+        status: task.status,
+      });
     }
+  }, [task, reset]);
 
-    if (title.length > 100) {
-      newErrors.title = "Title must be less than 100 characters";
-    }
-
-    if (description.length > 500) {
-      newErrors.description = "Description must be less than 500 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
+  const onFormSubmit = (data: FormValues) => {
     const taskData = {
       ...(task && { id: task.id }),
-      title,
-      description,
-      priority,
-      status,
-      ...(dueDate && { dueDate: new Date(dueDate).toISOString() }),
+      ...data,
+      dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
       ...(task && { userId: task.userId }),
       ...(task && { createdAt: task.createdAt }),
-      ...(status === Status.COMPLETED && {
+      ...(data.status === Status.COMPLETED && {
         completedAt: task?.completedAt || new Date().toISOString(),
       }),
     };
@@ -65,12 +64,13 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="p-6 w-full h-full rounded-lg shadow-md">
       <h2 className="mb-6 text-2xl font-bold text-gray-800">
         {task ? "Edit Task" : "Create New Task"}
       </h2>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        {/* Title */}
         <div className="mb-4">
           <label
             htmlFor="title"
@@ -79,22 +79,25 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
             Title <span className="text-red-500">*</span>
           </label>
           <input
-            type="text"
             id="title"
-            value={title}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setTitle(e.target.value)
-            }
+            {...register("title", {
+              required: "Title is required",
+              maxLength: {
+                value: 100,
+                message: "Title must be less than 100 characters",
+              },
+            })}
             className={`block w-full p-3 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
               errors.title ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Enter a title for your task"
           />
           {errors.title && (
-            <p className="mt-1 text-sm text-red-500">{errors.title}</p>
+            <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
           )}
         </div>
 
+        {/* Description */}
         <div className="mb-4">
           <label
             htmlFor="description"
@@ -104,22 +107,28 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
           </label>
           <textarea
             id="description"
-            value={description}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-              setDescription(e.target.value)
-            }
+            {...register("description", {
+              maxLength: {
+                value: 500,
+                message: "Description must be less than 500 characters",
+              },
+            })}
             rows={4}
             className={`block w-full p-3 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
               errors.description ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Describe your task (optional)"
-          ></textarea>
+          />
           {errors.description && (
-            <p className="mt-1 text-sm text-red-500">{errors.description}</p>
+            <p className="mt-1 text-sm text-red-500">
+              {errors.description.message}
+            </p>
           )}
         </div>
 
+        {/* Priority & Due Date */}
         <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
+          {/* Priority */}
           <div>
             <label
               htmlFor="priority"
@@ -129,10 +138,7 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
             </label>
             <select
               id="priority"
-              value={priority}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setPriority(e.target.value)
-              }
+              {...register("priority")}
               className="block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={Priority.LOW}>Low</option>
@@ -141,6 +147,7 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
             </select>
           </div>
 
+          {/* Due Date */}
           <div>
             <label
               htmlFor="dueDate"
@@ -151,14 +158,12 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
             <input
               type="date"
               id="dueDate"
-              value={dueDate}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setDueDate(e.target.value)
-              }
+              {...register("dueDate")}
               className="block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
+          {/* Status (only for edit) */}
           {task && (
             <div>
               <label
@@ -169,10 +174,7 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
               </label>
               <select
                 id="status"
-                value={status}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                  setStatus(e.target.value as Status)
-                }
+                {...register("status")}
                 className="block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value={Status.INCOMPLETE}>Incomplete</option>
@@ -182,10 +184,11 @@ function TaskForm({ onSubmit, onCancel, task }: TaskFormProps) {
           )}
         </div>
 
+        {/* Buttons */}
         <div className="flex justify-end space-x-3">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => dialogRef.current?.close()}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Cancel
