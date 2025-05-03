@@ -22,7 +22,7 @@ function TaskItem({ task }: { task: Task }) {
         </div>
         <div className="flex-1  h-full">
           <p className="">{task.description}</p>
-          <span>{task.dueDate}</span>
+          <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { filterTasks } from "../state/tasks/filterredTasksSlice";
 import { setStatusFilter } from "../state/tasks/filtersSlice";
 import TaskForm from "./taskForm";
 import LoadingSpinner from "./loadingSpinner";
+import { setSelectedTask } from "../state/tasks/selectedTaskSlice";
 function Tasks() {
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const statusFilter = useSelector(
@@ -21,15 +22,10 @@ function Tasks() {
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const selectedTask = useSelector((state: RootState) => state.selectedTask);
   const dispatch = useDispatch();
-
-  // const [tasksToDisplay, setTasksToDisplay] = useState<Task[]>([]);
   const addTaskDialog = useRef<HTMLDialogElement | null>(null);
-  useEffect(() => {
-    dispatch(filterTasks({ tasks, statusFilter, dateFilter }));
-    setSelectedTask(filteredTasks[0]);
-  }, [statusFilter, dateFilter]);
+
   console.log(filteredTasks);
   // // Create a new task
   const createTask = async (
@@ -55,9 +51,10 @@ function Tasks() {
       if (!response.ok) {
         throw new Error(data.message || "Failed to create task");
       }
-      const newTask = data;
       console.log(data);
-      dispatch(addTask(newTask));
+      dispatch(addTask(data));
+      dispatch(setSelectedTask(data));
+
       addTaskDialog.current?.close();
     } catch (err) {
       // setError(err instanceof Error ? err.message : "Failed to create task");
@@ -112,7 +109,7 @@ function Tasks() {
               </div>
             </div>
             <div className="w-full h-full">
-              {selectedTask && <TaskDetail task={selectedTask} />}
+              {selectedTask && <TaskDetail />}
             </div>
           </div>
           {filteredTasks.length > 0 ? (
@@ -121,7 +118,7 @@ function Tasks() {
                 <div
                   key={task.id}
                   className="h-40 p-3 hover:scale-105 hover:cursor-pointer transition-transform duration-300"
-                  onClick={() => setSelectedTask(task)}
+                  onClick={() => dispatch(setSelectedTask(task))}
                 >
                   <TaskItem task={task} />
                 </div>
@@ -129,7 +126,9 @@ function Tasks() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-full w-full">
-              <h1 className="font-extrabold">No Tasks</h1>
+              <h1 className="font-extrabold">
+                No Tasks Scheduled for this Day
+              </h1>
             </div>
           )}
         </div>

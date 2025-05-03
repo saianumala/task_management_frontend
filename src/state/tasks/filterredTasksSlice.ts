@@ -22,6 +22,7 @@ const filteredTasksSlice = createSlice({
           return true;
         })
         .filter((task: Task) => {
+          console.log(task);
           const due = dayjs(task.dueDate);
           if (dateFilter === "today") return due.isSame(now, "day");
           if (dateFilter === "yesterday")

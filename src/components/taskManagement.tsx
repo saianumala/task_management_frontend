@@ -6,6 +6,7 @@ import { setDateFilter } from "../state/tasks/filtersSlice";
 import { addTask, setTasks } from "../state/tasks/tasksSlice";
 import { filterTasks } from "../state/tasks/filterredTasksSlice";
 import { useNavigate } from "react-router-dom";
+import { setSelectedTask } from "../state/tasks/selectedTaskSlice";
 
 function TaskManagement() {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ function TaskManagement() {
   const dateFilter = useSelector(
     (state: RootState) => state.filters.dateFilter
   );
+  const selectedTask = useSelector((state: RootState) => state.selectedTask);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -41,6 +43,8 @@ function TaskManagement() {
         console.log(response);
         console.log("data", data);
         dispatch(setTasks(data));
+        dispatch(setSelectedTask(data[0]));
+        dispatch(filterTasks({ tasks, statusFilter, dateFilter }));
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
@@ -48,7 +52,19 @@ function TaskManagement() {
       }
     };
     fetchTasks();
-  }, []);
+  }, [dispatch]);
+  useEffect(() => {
+    dispatch(filterTasks({ tasks, statusFilter, dateFilter }));
+  }, [statusFilter, dateFilter, tasks, dispatch]);
+  useEffect(() => {
+    console.log("filteredTasks log");
+    console.log(filteredTasks);
+    if (filteredTasks.length > 0) {
+      dispatch(setSelectedTask(selectedTask));
+    } else {
+      dispatch(setSelectedTask(null));
+    }
+  }, [filteredTasks]);
   const handleLogout = async () => {
     const logoutResponse = await fetch(
       `${import.meta.env.VITE_BACKENDURL}/api/user/logout`,
@@ -78,28 +94,30 @@ function TaskManagement() {
         <div className="flex h-full w-5/6 p-3 gap-2 bg-blue-400/20">
           <div className="h-full w-1/6 flex gap-4 flex-col mt-14">
             <button
-              className={`p-4 rounded-lg ${
-                selectedDay === "today" ? "bg-white/60" : ""
-              } hover:bg-white/60`}
-              onClick={() => dispatch(setDateFilter("today"))}
-            >
-              Todays
-            </button>
-            <button
-              className={`p-4 rounded-lg ${
-                selectedDay === "yesterday" ? "bg-white/60" : ""
-              } hover:bg-white/60`}
-              onClick={() => dispatch(setDateFilter("yesterday"))}
-            >
-              Yesterdays
-            </button>
-            <button
-              className={`p-4 rounded-lg ${
+              className={`p-4 rounded-lg hover:cursor-pointer ${
                 selectedDay === "all" ? "bg-white/60" : ""
               } hover:bg-white/60`}
               onClick={() => dispatch(setDateFilter("all"))}
             >
               All
+            </button>
+            <button
+              className={`p-4 rounded-lg hover:cursor-pointer ${
+                selectedDay === "today" ? "bg-white/60" : ""
+              } hover:bg-white/60`}
+              onClick={() => {
+                dispatch(setDateFilter("today"));
+              }}
+            >
+              Todays
+            </button>
+            <button
+              className={`p-4 rounded-lg hover:cursor-pointer ${
+                selectedDay === "yesterday" ? "bg-white/60" : ""
+              } hover:bg-white/60`}
+              onClick={() => dispatch(setDateFilter("yesterday"))}
+            >
+              Yesterdays
             </button>
           </div>
 
